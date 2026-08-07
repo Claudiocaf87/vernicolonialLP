@@ -24,6 +24,12 @@
   .reveal { opacity: 0; transform: translateY(28px); transition: opacity 0.95s cubic-bezier(0.16,1,0.3,1), transform 0.95s cubic-bezier(0.16,1,0.3,1); }
   .reveal.visible { opacity: 1; transform: translateY(0); }
   .tscroll { -ms-overflow-style: none; scrollbar-width: none; }
+  #vc-lightbox { display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.94);align-items:center;justify-content:center;cursor:zoom-out; }
+  #vc-lightbox.open { display:flex; }
+  #vc-lightbox img { max-width:92vw;max-height:90vh;object-fit:contain; }
+  #vc-lightbox-close { position:absolute;top:24px;right:32px;color:#C9A84C;font-size:32px;cursor:pointer;font-family:serif;line-height:1;background:none;border:none;padding:0; }
+  .vc-zoomable { cursor:zoom-in; }
+  .vc-zoomable:hover { opacity:0.88; transition:opacity 0.2s; }
   .tscroll::-webkit-scrollbar { display: none; }
   #vc-grain { position: fixed; inset: 0; z-index: 9990; pointer-events: none; opacity: 0.032; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.68' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E"); background-size: 300px; }
   @keyframes heroFadeIn { from { opacity:0; transform: translateY(20px); } to { opacity:1; transform: translateY(0); } }
@@ -70,6 +76,10 @@
 </helmet>
 
 <div id="vc-grain"></div>
+<div id="vc-lightbox">
+  <button id="vc-lightbox-close">✕</button>
+  <img id="vc-lightbox-img" alt="">
+</div>
 
 <!-- ════════════════════ NAV ════════════════════ -->
 <nav id="verni-nav" style="position:fixed;top:0;left:0;right:0;z-index:1000;padding:28px 64px;display:flex;align-items:center;justify-content:space-between;transition:background 0.4s ease,padding 0.3s ease,border-bottom 0.4s ease;">
@@ -482,10 +492,10 @@
       </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;">
-      <div style="aspect-ratio:4/3;overflow:hidden;background:#111;"><img src="uploads/Otros 1.webp" alt="Proyecto Páez" style="width:100%;height:100%;object-fit:cover;display:block;"></div>
-      <div style="aspect-ratio:4/3;overflow:hidden;background:#111;"><img src="uploads/otros 2.webp" alt="Proyecto Páez" style="width:100%;height:100%;object-fit:cover;display:block;"></div>
-      <div style="aspect-ratio:4/3;overflow:hidden;background:#111;"><img src="uploads/otros 3.webp" alt="Proyecto Páez" style="width:100%;height:100%;object-fit:cover;display:block;"></div>
-      <div style="aspect-ratio:4/3;overflow:hidden;background:#111;"><img src="uploads/otros 4.webp" alt="Proyecto Páez" style="width:100%;height:100%;object-fit:cover;display:block;"></div>
+      <div style="aspect-ratio:4/3;overflow:hidden;background:#111;"><img src="uploads/Otros 1.webp" alt="Proyecto Páez" class="vc-zoomable" onClick="{{ openLightbox }}" style="width:100%;height:100%;object-fit:cover;display:block;"></div>
+      <div style="aspect-ratio:4/3;overflow:hidden;background:#111;"><img src="uploads/otros 2.webp" alt="Proyecto Páez" class="vc-zoomable" onClick="{{ openLightbox }}" style="width:100%;height:100%;object-fit:cover;display:block;"></div>
+      <div style="aspect-ratio:4/3;overflow:hidden;background:#111;"><img src="uploads/otros 3.webp" alt="Proyecto Páez" class="vc-zoomable" onClick="{{ openLightbox }}" style="width:100%;height:100%;object-fit:cover;display:block;"></div>
+      <div style="aspect-ratio:4/3;overflow:hidden;background:#111;"><img src="uploads/otros 4.webp" alt="Proyecto Páez" class="vc-zoomable" onClick="{{ openLightbox }}" style="width:100%;height:100%;object-fit:cover;display:block;"></div>
     </div>
   </div>
 </section>
@@ -611,6 +621,16 @@ class Component extends DCLogic {
     window.addEventListener('scroll', onScroll, { passive: true });
     this._onScroll = onScroll;
 
+    // Lightbox close
+    const lb = document.getElementById('vc-lightbox');
+    const lbClose = document.getElementById('vc-lightbox-close');
+    if (lb && lbClose) {
+      const closeLb = () => lb.classList.remove('open');
+      lb.addEventListener('click', closeLb);
+      lbClose.addEventListener('click', closeLb);
+      this._closeLb = closeLb;
+    }
+
     // Testimonials auto-scroll
     const strip = document.getElementById('vc-testimonials');
     if (strip) {
@@ -630,10 +650,20 @@ class Component extends DCLogic {
     }
   }
 
+  _openLightbox(e) {
+    const lb = document.getElementById('vc-lightbox');
+    const lbImg = document.getElementById('vc-lightbox-img');
+    if (!lb || !lbImg) return;
+    lbImg.src = e.currentTarget.src;
+    lb.classList.add('open');
+  }
+
   componentWillUnmount() {
     if (this._observer) this._observer.disconnect();
     if (this._onScroll) window.removeEventListener('scroll', this._onScroll);
     if (this._autoScroll) clearInterval(this._autoScroll);
+    const lb2 = document.getElementById('vc-lightbox');
+    if (lb2 && this._closeLb) lb2.removeEventListener('click', this._closeLb);
   }
 
   renderVals() {
@@ -656,7 +686,8 @@ class Component extends DCLogic {
       carouselSrc: current.src,
       carouselLabel: current.label,
       carouselCounter: (slide + 1).toString().padStart(2, '0') + ' / ' + n.toString().padStart(2, '0'),
-      carouselImg: React.createElement('img', { src: current.src, alt: current.label, style: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' } }),
+      carouselImg: React.createElement('img', { src: current.src, alt: current.label, className: 'vc-zoomable', onClick: this._openLightbox.bind(this), style: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' } }),
+      openLightbox: this._openLightbox.bind(this),
       prevSlide: () => this.setState(s => ({ slide: (s.slide - 1 + n) % n })),
       nextSlide: () => this.setState(s => ({ slide: (s.slide + 1) % n })),
       handleSubmit: (e) => {
